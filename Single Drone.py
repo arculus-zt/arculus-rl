@@ -80,7 +80,7 @@ gamma = 0.95
 # epsilon = 0.2
 
 
-episodes = 2000
+episodes = 5000
 
 
 
@@ -89,13 +89,16 @@ episodes = 2000
 
 
 # Initialize video recording for first two and last two episodes
-capture_episodes = [1900]
+capture_episodes = []
 
 
 
 
 
 plot_reward = []
+plot_cong_time= []
+plot_obs_hit= []
+plot_battery=[]
 
 # Initialize Q-table
 states = []
@@ -199,10 +202,14 @@ def is_within_radius(point1, point2, radius=20):
 
 # Function to get reward
 def get_reward(drone, customer, emergency, depot, delivered, truck, speed, near_customer, near_depot, near_emergency, battery):
+    global congtime
+    global obshit
+    
     for obstacle in obstacles:
             if obstacle.collidepoint(drone):
                 # print("collide bad")
                 return -100
+            obshit+=1
     if drone[0] == width - 1 or drone[0] == 0 or drone[1] == height or drone[1] == 0:
         return -100
     if battery <= 0:
@@ -214,6 +221,8 @@ def get_reward(drone, customer, emergency, depot, delivered, truck, speed, near_
     
     if is_in_congestion_zone(drone):
             reward -= 50
+            congtime+=1
+            # print(congtime)
     
 
     if not near_customer and distance(drone, customer) < 50:
@@ -370,6 +379,9 @@ for episode in range(episodes):
     dir = None
 
     battery = fullBattery
+    congtime = 0
+    obshit = 0
+    
     while not is_within_radius(drone, depot) and not is_within_radius(drone, emergency) and battery > 0:
         if steps % 200 == 0:
             if steps != 0:
@@ -539,6 +551,27 @@ for episode in range(episodes):
             returned = True
             break
         
+    
+    plot_cong_time.append(congtime)
+    plot_obs_hit.append(obshit)
+    plot_battery.append(battery)
+        
+
+
+# print(plot_cong_time)
+
+
+with open("cong_time.txt", "w") as file:
+    file.write(", ".join(map(str, plot_cong_time)))
+    
+with open("obs_hit.txt", "w") as file:
+    file.write(", ".join(map(str, plot_obs_hit)))
+
+
+with open("battery_plot_over_time.txt", "w") as file:
+    file.write(", ".join(map(str, plot_battery)))
+
+
 
 pygame.quit()
 sys.exit()
