@@ -1,57 +1,87 @@
+"""
+interface.py
+============
+
+Example
+-------
+>>> start      = (0, 0)
+>>> goal       = (14, 14)
+>>> obstacles  = [(2,3), (7,8), (11,1)]          # or [] for none
+>>> path = get_path(start, goal, obstacles)
+>>> for i, p in enumerate(path):
+...     print(f"step {i}: {p}")
+"""
 import torch
-import numpy as np
-from gridworld import Gridworld, DQN  # Assuming your environment & model code are in gridworld.py
+from gridworld import Gridworld, DQN
 
-def get_path(start, end, obstacles):
-    # Create and configure the environment
+
+def _prepare_env(start, goal, obstacles):
+    """
+    Instantiate Gridworld, then hard-set the first agent’s start/goal/obstacles.
+    The second agent is parked at an unused corner so its reward terms are silent.
+    """
     env = Gridworld()
-    
-    # Set both agents to the same start, but only the first agent will be used
-    env.agents = [start, (0, 0)]          # Second agent is dummy
-    env.goals = [end, (0, 0)]             # Second goal is dummy
-    env.obstacles = obstacles             # Replace obstacles with the provided list
-    
-    # Recompute best paths since obstacles changed
-    env.best_path_agent0 = env.a_star(start, end)
-    env.best_path_agent1 = env.a_star((0, 0), (0, 0))  # Dummy
 
-    # Reset the environment and get the initial state for the agent
-    state = env.reset()[0]  # For a single agent, take the first state
+    # lock positions/obstacles
+    env.agents          = [start, (0, 0)]          # agent-1 dummy
+    env.goals           = [goal,  (0, 0)]          # goal-1 dummy
+    env.obstacles       = list(obstacles)          # make sure it’s a list
 
-    # Determine state dimension and action dimension
-    state_dim = len(state)
-    action_dim = 4  # up, down, left, right
+    # rebuild A* helpers for shaping/reward
+    env.best_path_agent0 = env.a_star(start, goal)
+    env.best_path_agent1 = []                      # not used
 
-    # Load the trained model (ensure that trained_model.pth is provided)
-    model = DQN(state_dim, action_dim)
-    model.load_state_dict(torch.load("agent_0_trained.pth", map_location=torch.device("cpu")))
+    return env
+
+
+def _load_model(state_dim, model_path="agent_0_trained.pth"):
+    model = DQN(state_dim, 4)          # 4 actions: N,S,W,E
+    model.load_state_dict(torch.load(model_path, map_location="cpu"))
     model.eval()
+    return model
 
-    # Run the simulation until the goal is reached (or a maximum step count)
-    path = [start]
-    done = False
-    max_steps = 1000
-    current_state = state
+
+def get_path(start, goal, obstacles, model_path="agent_0_trained.pth",
+             max_steps=500):
+    """
+    Parameters
+    ----------
+    start, goal : tuple[int, int]
+        Grid coordinates (x, y).
+    obstacles   : list[tuple[int,int]]
+    model_path  : str
+    max_steps   : int
+    Returns
+    -------
+    list[tuple[int,int]]
+        Visited (x,y) cells, starting with `start`.
+    """
+    env   = _prepare_env(start, goal, obstacles)
+    state = env.get_states()[0]                    # only agent-0’s state
+    net   = _load_model(len(state), model_path)
+
+    path, done = [start], False
     while not done and len(path) < max_steps:
-        state_tensor = torch.FloatTensor(current_state).unsqueeze(0)
         with torch.no_grad():
-            action = model(state_tensor).argmax().item()
-        next_state, reward, done = env.step([action, 0])  # Second agent is dummy
-        current_state = next_state[0]
+            action = net(torch.tensor(state, dtype=torch.float32)
+                         .unsqueeze(0)).argmax().item()
+
+        # second agent gets a no-op               ↓↓↓
+        next_states, _, done = env.step([action, 0])
+        state = next_states[0]
         path.append(env.agents[0])
+
     return path
 
-if __name__ == '__main__':
-    #Start and End
-    start = (0, 0)
-    end = (14, 14)
 
-    #Obstacle list
-    obstacles = [(2, 3), (7, 8), (11, 1), (6, 4), (9, 13),
-    (3, 10), (12, 7), (0, 9), (0, 12), (4, 6),
-    (10, 3), (1, 10), (6, 9), (13, 2), (7, 6),
-    (5, 14), (11, 12), (10, 14), (8, 2), (14, 4),
-    (5, 8), (2, 10), (13, 13), (10, 9), (4, 2)]
-    path = get_path(start, end, obstacles)
-    print("Computed Path (as grid waypoints):")
-    print(path)
+if __name__ == "__main__":
+    # quick sanity check
+    demo_start = (0, 0)
+    demo_goal  = (14, 14)
+    demo_obs   = [(2, 3), (7, 8), (11, 1), (6, 4), (9, 13),(3, 10), (12, 7), (0, 9), (0, 12), (4, 6),(10, 3), (1, 10), (6, 9), (13, 2), (7, 6),(5, 14), (11, 12), (10, 14), (8, 2), (14, 4),(5, 8), (2, 10), (13, 13), (10, 9), (4, 2)]
+
+    final_path = get_path(demo_start, demo_goal, demo_obs)
+
+    print("\nFINAL PATH")
+    for i, cell in enumerate(final_path):
+        print(f"step {i:<3}: {cell}")

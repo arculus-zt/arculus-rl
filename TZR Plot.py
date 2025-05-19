@@ -20,11 +20,11 @@ data = {
 
 # Convert values to percentages
 for radius, values in data.items():
-    if radius != 'Reward Ratio':  # Skip the Reward Ratio list
+    if radius != 'Reward Ratio':  
         for metric in values.keys():
             values[metric] = [val / 100 for val in values[metric]]
 
-# Create a DataFrame for easier plotting
+# Create DataFrame
 df = pd.DataFrame({
     'Reward Ratio': data['Reward Ratio'],
     'Radius 0 - Safety': data['Radius 0']['Safety'],
@@ -39,29 +39,35 @@ df = pd.DataFrame({
 color_safety = 'blue'
 color_success = 'green'
 
-# Plot the data
 plt.figure(figsize=(14, 8))
 
 marker_size = 10
 
-# Plot for Safety
+# Safety plots
 plt.plot(df['Reward Ratio'], df['Radius 0 - Safety'], label='Radius 0 - Safety', color=color_safety, linestyle='--', marker='o', markersize=marker_size)
 plt.plot(df['Reward Ratio'], df['Radius 250 - Safety'], label='Radius 250 - Safety', color=color_safety, linestyle='--', marker='s', markersize=marker_size)
 plt.plot(df['Reward Ratio'], df['Radius 500 - Safety'], label='Radius 500 - Safety', color=color_safety, linestyle='--', marker='^', markersize=marker_size)
 
-# Plot for Success
+# Success plots
 plt.plot(df['Reward Ratio'], df['Radius 0 - Success'], label='Radius 0 - Success', color=color_success, linestyle='-', marker='o', markersize=marker_size)
 plt.plot(df['Reward Ratio'], df['Radius 250 - Success'], label='Radius 250 - Success', color=color_success, linestyle='-', marker='s', markersize=marker_size)
 plt.plot(df['Reward Ratio'], df['Radius 500 - Success'], label='Radius 500 - Success', color=color_success, linestyle='-', marker='^', markersize=marker_size)
 
-# Customize the plot
-plt.xlabel('Reward Ratio', fontsize=20)
-plt.xticks(fontsize=18)
-plt.ylabel('Percentage (%)', fontsize=20)
-plt.yticks(fontsize=18)
-plt.legend(fontsize=18)
+# Axis labels with bold + Arial
+plt.xlabel('Reward Ratio', fontsize=20, fontweight='bold', fontname='Arial')
+plt.ylabel('Percentage (%)', fontsize=20, fontweight='bold', fontname='Arial')
+
+# Ticks
+plt.xticks(fontsize=18, fontname='Arial')
+plt.yticks(fontsize=18, fontname='Arial')
+
+# Legend with Arial
+plt.legend(prop={'family': 'Arial', 'size': 16})
+
+
+
+
 plt.grid(False)
 plt.tight_layout()
 
-# Show the plot
 plt.show()
