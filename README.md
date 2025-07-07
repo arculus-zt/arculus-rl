@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ## Running the Training
 
 ```bash
-python train.py
+jupyter notebook train.ipynb
 ```
 
 Training runs for 5000 episodes by default. Two agents are trained in parallel to reach their goals from randomly initialized start positions. Environment includes:
